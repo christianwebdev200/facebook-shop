@@ -1,0 +1,37 @@
+// https://developers.facebook.com/docs/marketing-api/catalog-batch/reference#supported-fields-batch
+[{
+    "vendor_id": "",
+    "name": "",
+    "description": "",
+    "size": "",
+    "url": "",
+    "gender": "male", // male, female, unisex
+    "gtin": "",
+    "brand": "",
+    "additional_image_urls": "",
+    "additional_variant_attributes": "",
+    "color": "red",
+    "condition": "new", // new, refurbished, used
+    "price": "",
+    "currency": "USD",
+    "image_url": "",
+    "item_group_id": "",
+    "category": " Apparel & Accessories > Clothing > Shirts & Tops",
+    "google_product_category": "",
+    "availability": "in stock",  // out of stock, available for order, discontinued 
+    "age_group": "adult", // newborn, infant, toddler, kids, adult 
+    "applinks": "",
+    "custom_label_0": "",
+    "custom_label_1": "",
+    "custom_label_2": "",
+    "custom_label_3": "",
+    "custom_label_4": "",
+    "inventory": "",
+    "pattern": "",
+    "product_type": "",
+    "retailer_product_group_id": "",
+    "sale_price": "",
+    "sale_price_start_date": "",
+    "sale_price_end_date": "",
+    "shipping": ""
+}]
