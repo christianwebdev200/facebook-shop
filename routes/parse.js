@@ -3,15 +3,18 @@ var router = express.Router();
 var merchantItems = require('../merchant-items.json');
 const { Parser } = require('json2csv');
 const { default: axios } = require('axios');
+var csvToJson = require('csvtojson')
+const fs = require('fs');
+const { stringify } = require('querystring');
 
-const access_token = 'EAAEm4SrvCE8BANnwjfFy5xZCzCXVTRBLLLn8b9S94c7hKtaN4hyXbwDiZB3ZChmCwkOsoHTTjHX6rDLzhPVPpcyQo9RvtA8inU19nLVoIU62tsuZBWs9vu8Lpvwxp4VtnAByETux3ZAwtitEQA4oP0DozyZAd5HmiJZCyXguTG6SjDz0ucDfLaZC'
+const access_token = 'EAAEm4SrvCE8BAEblZCJsDmwVZBwN1GgemGbJJiQ6VrnpZCfBmnO6CBpnZC8kJlB29FgeOijtRmUxNnBgLMwuB2OcWAnkyqLz63Ek9Sikf4EML2PbK7l6l1ncTCUxsFpl1D7raZA2Ef7GwWkEEQSRlnmRchdlqIlL2ESM03goYBktHXZBheD0Bc'
 
-const catalog_id = '427985606043365';
+const catalog_id = '5030236887077668';
 const bussiness_id = '2249078045246495'
 
 
 const alphaImagesBuilder = (filename) => {
-  return filename ? `https://sl7.bulkapparel.com/image/alpha-colors/fashion-wear/${filename}` : null;
+  return filename ? `https://www.bulkapparel.com/image/alpha-colors/fashion-wear/${filename}` : null;
 }
 
 
@@ -23,24 +26,25 @@ const parsedMerchantJson = () => {
     const backAlphaImageLink = alphaImagesBuilder(item.alphaBackImage);
     const image_link = frontAlphaImageLink || item.imageLink
     const additional_image_link = [
-       frontAlphaImageLink, 
-       sideAlphaImageLink, 
-       backAlphaImageLink, 
-       item.imageLink,
+      frontAlphaImageLink,
+      sideAlphaImageLink,
+      backAlphaImageLink,
+      item.imageLink,
       ...item.additionalImageLinks.split(',').map(item => item.replace('/styleImages/Images/Color', '/image/fashion-wear')),
-    ].filter(item=> item && item !== image_link).join(",");
+    ].filter(item => item && item !== image_link).join(",");
     return {
       id: item.id,
-      title: item.title.replace(' '+ item.color, ''),
+      // title: item.title.replace(' '+ item.color, ''),
+      title: item.customTitle,
       description: item.description,
-      link:item.link,
+      link: item.link,
       image_link,
       // origin_country: item.targetCountry,
       availability: item.availability,
       condition: item.condition,
       google_product_category: item.googleProductCategory,
       // fb_product_category: "",
-      gtin: '00'+item.gtin,
+      gtin: '00' + item.gtin,
       age_group: item.ageGroup.toLowerCase(),
       gender: item.gender.toLowerCase(),
       brand: item.brand,
@@ -48,20 +52,20 @@ const parsedMerchantJson = () => {
       size: item.size,
       material: item.material,
       additional_image_link,
-      product_type: item.productType ,
+      product_type: item.productType,
       price: item.price + ' ' + item.currency,
       quantity_to_sell_on_facebook: item.qty,
       // item_group_id: item.itemGroupId,
       item_group_id: item.mpn.toString(), // to group all colors and sizes it must be same
       "custom_label_0": item.customLabel0,
-			"custom_label_1": item.customLabel1,
-			"custom_label_2": item.customLabel2,
-			"custom_label_3": item.customLabel3,
-			"custom_label_4": item.customLabel4,
+      "custom_label_1": item.customLabel1,
+      "custom_label_2": item.customLabel2,
+      "custom_label_3": item.customLabel3,
+      "custom_label_4": item.customLabel4,
     }
   })
 
-} 
+}
 
 function paginate(array, page_size, page_number) {
   return array.slice((page_number - 1) * page_size, page_number * page_size);
@@ -76,7 +80,7 @@ router.get('/batch', function (req, res, next) {
       id: item.id,
       name: item.title,
       description: item.description,
-      url:item.link,
+      url: item.link,
       image_url: item.imageLink,
       // origin_country: item.targetCountry,
       availability: item.availability,
@@ -92,15 +96,15 @@ router.get('/batch', function (req, res, next) {
       size: item.size,
       material: item.material,
       additional_image_urls: item.additionalImageLinks.split(',').map(item => item.replace('/styleImages/Images/Color', '/image/fashion-wear/')),
-      product_type: item.productType ,
-      price: Math.round (item.price * 100),
+      product_type: item.productType,
+      price: Math.round(item.price * 100),
       currency: item.currency,
       retailer_product_group_id: item.itemGroupId,
       "custom_label_0": item.customLabel0,
-			"custom_label_1": item.customLabel1,
-			"custom_label_2": item.customLabel2,
-			"custom_label_3": item.customLabel3,
-			"custom_label_4": item.customLabel4,
+      "custom_label_1": item.customLabel1,
+      "custom_label_2": item.customLabel2,
+      "custom_label_3": item.customLabel3,
+      "custom_label_4": item.customLabel4,
     }
   })
 
@@ -114,8 +118,8 @@ router.get('/batch', function (req, res, next) {
       const data = item;
       let retailer_id = item.id
       delete data.id;
-      return {method: 'CREATE', retailer_id, data  }
-    }).slice(0,2)
+      return { method: 'CREATE', retailer_id, data }
+    }).slice(0, 2)
   })
 });
 
@@ -125,17 +129,20 @@ router.get('/items-batch', function (req, res, next) {
   const page = parseInt(req.query.page) || 1;
   const parsedItems = parsedMerchantJson();
 
-  console.log('Page', page);
+  let chunkItems = [];
 
-  console.log('Length',parsedItems.length)
-  
-  const unique = [...new Set(parsedItems.map(item => item.item_group_id))]
+  if(req.query.page !== 'all') {
+    
+      console.log('Page', page);
+      console.log('Length', parsedItems.length)
+      const unique = [...new Set(parsedItems.map(item => item.item_group_id))]
+      console.log('Unique Length', unique.length)
+      chunkItems = paginate(parsedItems, 5000, page)
+      console.log('Chunk Length', chunkItems.length)
 
-  console.log('Unique Length', unique.length)
-
-  const chunkItems = paginate(parsedItems, 5000, page)
-  
-  console.log('Chunk Length', chunkItems.length)
+  } else {
+    chunkItems = parsedItems;
+  }
 
   res.status(200).json({
     access_token: access_token,
@@ -143,44 +150,55 @@ router.get('/items-batch', function (req, res, next) {
     allow_upsert: true,
     requests: chunkItems.map(item => {
       const data = item;
-      return {method: METHOD, data  }
+      return { method: METHOD, data }
     })
   })
 });
 
-router.get('/automatic-items-batch', function (req, res, next) {
+router.post('/automatic-items-batch', async function (req, res, next) {
   const METHOD = req.query.method || 'UPDATE';
   const parsedItems = parsedMerchantJson();
 
   const chunkSize = 5000;
-  const chunkCount = parsedItems / chunkSize;
-  
-  const promises = [] 
+  const chunkCount = Math.ceil(parsedItems.length / chunkSize);
+
+  const promises = []
   const results = []
-  
-  
+  const errors = []
+
   for (i = 1; i <= chunkCount; i++) {
-    const chunkItems = paginate(parsedItems, chunkSize, i);
-    const data = {
-      access_token: access_token,
-      item_type: "PRODUCT_ITEM",
-      allow_upsert: true,
-      requests: chunkItems.map(item => {
-        const data = item;
-        return {method: METHOD, data  }
-      })
+
+    try {
+      const chunkItems = paginate(parsedItems, chunkSize, i);
+      const data = {
+        access_token: access_token,
+        item_type: "PRODUCT_ITEM",
+        allow_upsert: true,
+        requests: chunkItems.map(item => {
+          const data = item;
+          return { method: METHOD, data }
+        })
+      }
+      
+      const response = await axios.post(`https://graph.facebook.com/v14.0/${catalog_id}/items_batch`, data);
+
+      results.push(response.data);
+
+      console.log(response.data)
+    } catch (error) {
+      console.log(error.response.data)
+      errors.push(error);
     }
-    promises.push(
-      axios.post(`https://graph.facebook.com/v14.0/${catalog_id}/items_batch`, data).then((response)=> results.push(response) )
-    )
+   
   }
-  
-  
-  const data = await Promise.all(promises);
-  
+
+ 
+  console.log(chunkCount);
+
   res.status(200).json({
     message: 'Automatic Item batch successful',
-    results,
+    results: results,
+    errors: errors
   })
 });
 
@@ -214,7 +232,7 @@ const opts = { fields };
 
 router.get('/plain-items-batch', function (req, res, next) {
   const parsedItems = parsedMerchantJson();
-  
+
   try {
     const parser = new Parser(opts);
     const csv = parser.parse(parsedItems);
@@ -226,5 +244,22 @@ router.get('/plain-items-batch', function (req, res, next) {
 });
 
 
+router.post('/csv-to-json', async function (req, res, next) {
+  const csv = req.files.csv;
+
+  console.log(csv.tempFilePath)
+
+  const parsedItems = await csvToJson({
+    colParser: fields,
+  }).fromFile(csv.tempFilePath);
+
+  // console.log(parsedItems)
+
+  // await fs.writeFile('merchant-items.json', JSON.stringify(parsedItems || {}), (error) => {
+  //   if (error) console.error(error);
+  // });
+
+  res.status(200).json(parsedItems);
+});
 
 module.exports = router;
