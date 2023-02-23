@@ -30,7 +30,7 @@ const parsedMerchantJson = () => {
       sideAlphaImageLink,
       backAlphaImageLink,
       item.imageLink,
-      ...item.additionalImageLinks.split(',').map(item => item.replace('/styleImages/Images/Color', '/image/fashion-wear')),
+      ...item.additionalImageLinks.split(',').map(item => item.replace('/styleImages/Images/Color', '/image/fashion-wear').replace('/styleImages/Images/Style', '/image/fashion-wear')),
     ].filter(item => item && item !== image_link).join(",");
     return {
       id: item.id,
@@ -56,7 +56,7 @@ const parsedMerchantJson = () => {
       price: item.price + ' ' + item.currency,
       quantity_to_sell_on_facebook: item.qty,
       // item_group_id: item.itemGroupId,
-      item_group_id: item.mpn.toString(), // to group all colors and sizes it must be same
+      item_group_id: (item.brand.replace(/[^A-Z0-9]+/ig, "_") + '_' + item.mpn.toString()).toLowerCase(), // to group all colors and sizes it must be same
       "custom_label_0": item.customLabel0,
       "custom_label_1": item.customLabel1,
       "custom_label_2": item.customLabel2,
